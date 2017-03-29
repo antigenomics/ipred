@@ -1,0 +1,13 @@
+# Jupyter
+.ipynb_checkpoints
+predictions for Vadim.ipynb
+
+# History files
+.Rhistory
+
+# Session Data files
+.RData
+
+# Large files
+output/
+data/uniprot_sprot.fasta
