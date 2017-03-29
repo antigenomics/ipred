@@ -19,4 +19,5 @@ data/uniprot_sprot.fasta
 data/HLA-B2705.csv
 data/bdata.2009.tsv
 data/blind.tsv
+data/UP000005640_9606.fasta
 
