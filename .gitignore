@@ -1,3 +1,8 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
 # Jupyter
 .ipynb_checkpoints
 predictions for Vadim.ipynb
@@ -11,3 +16,7 @@ predictions for Vadim.ipynb
 # Large files
 output/
 data/uniprot_sprot.fasta
+data/HLA-B2705.csv
+data/bdata.2009.tsv
+data/blind.tsv
+
