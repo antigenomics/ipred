@@ -30,17 +30,17 @@ if __name__ == "__main__":
         dict_ = dict()
         for i, s_line in enumerate(data['Peptide']):
             result = hamming(line, s_line)
-            if result <= dist:
-                dict_[i] = result
+        #    if result <= dist:
+        #        dict_[i] = result
         return dict_
 
-    pool = Pool(processes=40) 
+    pool = Pool(processes=5) 
 
     for line in tqdm(binding['Peptide']):
     #     result = pool.apply_async(ham_dist_dict, (binding, 1, line,)).get()
         result = pool.apply(ham_dist_dict, (binding, 1, line,))
     #     result = ham_dist_dict(binding, 1, line)
-        list2.append(result)
+    #    list2.append(result)
 
     # pool.close()
     # pool.join()
