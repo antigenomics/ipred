@@ -60,9 +60,9 @@ cd tmp/
 if [ "$mihuge"==true ]
 then
   parallel --eta /home/vcvetkov/Tools/netMHCpan-3.0/bin/netMHCpan \
- -p -a "$HLA" ::: *.txt > "../ $HLA _NMP.txt"
+ -p -a "$HLA" ::: *.txt > "../"$HLA"_NMP.txt"
 else
-  parallel --eta netMHCpan -p -a "$HLA" ::: *.txt > "../ $HLA _NMP.txt"
+  parallel --eta netMHCpan -p -a "$HLA" ::: *.txt > "../"$HLA"_NMP.txt"
 fi
 
 echo " The $HLA peptide binding has been predicted succesfully!"
