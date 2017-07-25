@@ -28,6 +28,7 @@ while getopts ":hsa:" opt; do
     m)
       mihuge=true
       echo " Script runs under mihuge server"
+      ;;
     \?)
       echo " Invalid option: -$OPTARG" >&2
       ;;
