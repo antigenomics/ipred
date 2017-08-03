@@ -14,26 +14,26 @@ HLA="HLA-A02:01"
 mihuge=false
 deletetemp=true
 
-while getopts ":hsa:" opt; do
+while getopts ":hmsa:t" opt; do
   case $opt in
     h) echo "$usage"
        exit
        ;;
+    m)
+      mihuge=true
+      echo " Script runs under mihuge server" >&2
+      ;;
     s)
       splitfile=true
       echo " Split option was triggered" >&2
       ;;
     a)
       HLA=$OPTARG
-      echo " \"-a\" argument of netMHCpan was set to $HLA"  >&2
+      echo " \"-a\" argument of netMHCpan was set to $HLA" >&2
       ;;
     t)
       deletetemp=false
-      echo "Temporary files will not be deleted"
-      ;;
-    m)
-      mihuge=true
-      echo " Script runs under mihuge server"
+      echo "Temporary files will not be deleted" >&2
       ;;
     \?)
       echo " Invalid option: -$OPTARG" >&2
@@ -63,8 +63,7 @@ fi
 # Parallel is used to increase the computational speed.
 
 cd tmp/
-if [ "$mihuge"==true ]
-then
+if [ "$mihuge"==true ]; then
   parallel --eta /home/vcvetkov/Tools/netMHCpan-3.0/bin/netMHCpan \
  -p -expfix -a "$HLA" ::: *.txt > "../"$HLA"_NMP_tmp1.txt"
 else
@@ -86,8 +85,7 @@ sed -i '/^$/d' "$HLA"_NMP_tmp2.txt
 
 awk '{ print $2 $3 $12 }' "$HLA"_NMP_tmp2.txt > "$HLA"_NMP_proc.txt
 
-if [ "$deletetemp"==true ]
-then
+if [ "$deletetemp"==true ]; then
   rm *tmp1.txt
   rm *tmp2.txt
 fi
