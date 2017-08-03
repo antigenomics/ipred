@@ -80,7 +80,7 @@ python ../modules/NMP_process.py -f "$HLA"_NMP_tmp1.txt > "$HLA"_NMP_tmp2.txt
 # d is the sed command to delete a line. ^$ is a regular expression matching
 # only a blank line, a line start followed by a line end.
 
-sed -i '/^$/d' file.txt
+sed -i '/^$/d' "$HLA"_NMP_tmp2.txt
 
 # A command to select only specific columns from a file
 
