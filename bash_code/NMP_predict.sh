@@ -14,7 +14,7 @@ HLA="HLA-A02:01"
 mihuge=false
 deletetemp=true
 
-while getopts ":hmsa:t" opt; do
+while getopts "hmsa:t" opt; do
   case $opt in
     h) echo "$usage"
        exit
