@@ -1,12 +1,15 @@
-#!/bin/bash
+#!/bin/sh
 
-mapfile -t arguments < arguments.txt
-for argument in $arguments; do
+readarray -t arguments < arguments.txt
+
+for argument in "${arguments[@]}"; do
   {
-    bash NMP_predict.sh -t -m -a $argument && \
+    echo "$argument"
+    bash NMP_predict.sh -m -a $argument && \
     "Succesfully predicted $argument binding" >> NMP_prediction.log
   } || {
     "Failed to predict $argument binding" >> NMP_prediction.log
+    echo "Failed to predict $argument binding" >&2
   }
   echo "    $argument netMHCpan prediction has been completed!    " >&2
 done
