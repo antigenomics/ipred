@@ -64,22 +64,13 @@ fi
 
 cd tmp/
 if [ "$mihuge" == true ]; then
-  parallel --eta /home/vcvetkov/Tools/netMHCpan-3.0/bin/netMHCpan \
+  parallel --eta --jobs 40 /home/vcvetkov/Tools/netMHCpan-3.0/bin/netMHCpan \
  -p -a "$HLA" ::: *.txt > "../"$HLA"_NMP_tmp1.txt"
 else
   parallel --eta netMHCpan -p -a "$HLA" ::: *.txt > "../"$HLA"_NMP_tmp1.txt"
 fi
 
 cd ../
-
-read numlines <<< $( wc -l ""$HLA"_NMP_tmp1.txt" )
-
-echo "Parallel produced file with $numlines lines"
-
-if [ "$numlines" == 0 ]; then
-  echo "Oops, parallel has produced an empty file!"
-  exit 0
-fi
 
 # A command to delete useless lines from file. 
 
