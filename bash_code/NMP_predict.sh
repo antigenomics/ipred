@@ -88,7 +88,7 @@ awk '{ print $2, $3, $13 }' "$HLA"_NMP_tmp1.txt > "$HLA"_NMP_tmp2.txt
 # Next command will remove duplicates to get rid of multiple titles
 # left after parallel
 
-awk '!a[$0]++' "$HLA"_NMP_tmp2.txt > "$HLA"_NMP_proc.txt
+awk '!a[$0]++' "$HLA"_NMP_tmp2.txt > "$HLA"_NMP_9mer_proc.txt
 
 if [ "$deletetemp" == true ]; then
   rm *tmp1.txt
