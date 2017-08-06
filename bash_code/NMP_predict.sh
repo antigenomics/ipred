@@ -70,16 +70,20 @@ else
   parallel --eta netMHCpan -p -a "$HLA" ::: *.txt > "../"$HLA"_NMP_tmp1.txt"
 fi
 
-# Python script for some reason creates empty lines
-
 cd ../
-# python ../modules/NMP_process.py -f "$HLA"_NMP_tmp1.txt > "$HLA"_NMP_tmp2.txt
 
-# A command to delete empty lines from file. 
-# d is the sed command to delete a line. ^$ is a regular expression matching
-# only a blank line, a line start followed by a line end.
+read numlines <<< $( wc -l ""$HLA"_NMP_tmp1.txt" )
 
-sed -i '/^ /!d' "$HLA"_NMP_tmp1.txt
+echo "Parallel produced file with $numlines lines"
+
+if [ "$numlines" == 0 ]; then
+  echo "Oops, parallel has produced an empty file!"
+  exit 0
+fi
+
+# A command to delete useless lines from file. 
+
+# sed -i '/^ /!d' "$HLA"_NMP_tmp1.txt
 
 # A command to select only specific columns from a file
 
