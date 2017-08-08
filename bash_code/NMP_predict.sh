@@ -63,6 +63,7 @@ fi
 # Parallel is used to increase the computational speed.
 
 cd tmp/
+echo "$HLA binding prediction"
 if [ "$mihuge" == true ]; then
   parallel --eta --jobs 40 /home/vcvetkov/Tools/netMHCpan-3.0/bin/netMHCpan \
  -p -a "$HLA" ::: *.txt > "../"$HLA"_NMP_tmp1.txt"
@@ -74,7 +75,7 @@ cd ../
 
 # A command to delete useless lines from file. 
 
-# sed -i '/^ /!d' "$HLA"_NMP_tmp1.txt
+sed -i '/^ /!d' "$HLA"_NMP_tmp1.txt
 
 # A command to select only specific columns from a file
 
