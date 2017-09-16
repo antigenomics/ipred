@@ -9,7 +9,7 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 def get_kmers(length, record_dict):
-    filename = 'output/peptides_raw.txt'
+    filename = '../output/peptides_raw.txt'
     target = open(filename, 'w+')
     for key in tqdm(record_dict):
         for i in range(len(record_dict[key].seq)-length):
@@ -22,8 +22,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     l = args.length
+    l = int(l)
 
-    record_dict = SeqIO.index("data/UP000005640_9606.fasta", "fasta")
+    record_dict = SeqIO.index("../data/UP000005640_9606.fasta", "fasta")
     eprint("Dictionary has been loaded")
     get_kmers(l, record_dict)
     eprint("Processing complete")
