@@ -20,7 +20,7 @@ class Hamming {
       }
     } catch (IOException e) {
             e.printStackTrace();
-    } 
+    }
     
     /* Performing hamming function **/
     for (String line : lines) {
