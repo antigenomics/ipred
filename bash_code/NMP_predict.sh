@@ -66,12 +66,13 @@ cd tmp/
 echo "$HLA binding prediction"
 if [ "$mihuge" == true ]; then
   parallel --eta --jobs 40 /home/vcvetkov/Tools/netMHCpan-3.0/bin/netMHCpan \
- -p -a "$HLA" ::: *.txt > "../"$HLA"_NMP_tmp1.txt"
+ -p -a "$HLA" ::: *.txt > "../netMHCpan/"$HLA"_NMP_tmp1.txt"
 else
-  parallel --eta netMHCpan -p -a "$HLA" ::: *.txt > "../"$HLA"_NMP_tmp1.txt"
+  parallel --eta netMHCpan -p -a \
+ "$HLA" ::: *.txt > "../netMHCpan/"$HLA"_NMP_tmp1.txt"
 fi
 
-cd ../
+cd ../netMHCpan/
 
 # A command to delete useless lines from file. 
 

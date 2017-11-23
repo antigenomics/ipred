@@ -1,7 +1,7 @@
 #!/bin/sh
 echo "netMHCpan prediction has been started to compute. Reading list of arguments" \
  | tee NMP_prediction.log
-readarray -t arguments < arguments.txt
+readarray -t arguments < new_arguments.txt
 
 for argument in "${arguments[@]}"; do
   echo "$argument binding prediction has been started to compute" >&2
