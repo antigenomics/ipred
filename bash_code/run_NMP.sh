@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 echo "netMHCpan prediction has been started to compute. Reading list of arguments" \
  | tee NMP_prediction.log
 readarray -t arguments < new_arguments.txt

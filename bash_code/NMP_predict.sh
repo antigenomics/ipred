@@ -59,7 +59,7 @@ fi
 
 # All splitted files are stored in tmp/ directory.
 
-if [ "$splitfile" == true ]; then
+if [ "$splitfile" = true ]; then
   split -d -l 5000 --additional-suffix=.txt k-mers/human_peptides_"$kmers"mers.txt tmp/hpeptides_"$kmers"mers_
 fi
 
@@ -67,9 +67,9 @@ fi
 
 cd tmp/
 echo "$HLA binding prediction"
-if [ "$mihuge" == true ]; then
+if [ "$mihuge" = true ]; then
   parallel --eta --jobs 40 /home/vcvetkov/Tools/netMHCpan-4.0/netMHCpan \
- -p -a "$HLA" -f ::: hpeptides_"$kmers"mers_* > "../netMHCpan/"$HLA"_NMP_tmp1.txt"
+ -p -BA -a "$HLA" -f ::: hpeptides_"$kmers"mers_* > "../netMHCpan/"$HLA"_NMP_tmp1.txt"
 else
   parallel --eta netMHCpan -p -a \
  "$HLA" ::: hpeptides_"$kmers"mers_ > "../netMHCpan/"$HLA"_NMP_tmp1.txt"
@@ -90,7 +90,7 @@ awk '{ print $2, $3, $13 }' "$HLA"_NMP_tmp1.txt > "$HLA"_NMP_tmp2.txt
 
 awk '!a[$0]++' "$HLA"_NMP_tmp2.txt > "$HLA"_NMP_"$kmers"mer_proc.txt
 
-if [ "$deletetemp" == true ]; then
+if [ "$deletetemp" = true ]; then
   rm *tmp1.txt
   rm *tmp2.txt
 fi
