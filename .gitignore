@@ -21,3 +21,5 @@ data/
 
 .Rproj.user
 R_code.Rproj
+.gitignore
+Untitled.ipynb

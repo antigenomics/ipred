@@ -1,1 +1,131 @@
-Succesfully predicted HLA-C16:04 binding
+ Metafile /home/vcvetkov/Projects/ipred/output/test/meta.txt 
+ Script will use 80 cores 
+netMHCpan prediction has been started to compute. Reading list of arguments
+Temporary directory has been cleared
+The file for HLA-A*31:01 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-A*31:01 binding prediction started
+   The nmptmp/ contains 24 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-A*31:01 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-A*31:01 binding
+Temporary directory has been cleared
+The file for HLA-B*44:03 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-B*44:03 binding prediction started
+   The nmptmp/ contains 18 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-B*44:03 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-B*44:03 binding
+Temporary directory has been cleared
+The file for HLA-A*02:04 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-A*02:04 binding prediction started
+   The nmptmp/ contains 33 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-A*02:04 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-A*02:04 binding
+Temporary directory has been cleared
+The file for HLA-A*29:02 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-A*29:02 binding prediction started
+   The nmptmp/ contains 17 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-A*29:02 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-A*29:02 binding
+Temporary directory has been cleared
+The file for HLA-B*57:01 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-B*57:01 binding prediction started
+   The nmptmp/ contains 25 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-B*57:01 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-B*57:01 binding
+Temporary directory has been cleared
+The file for HLA-B*35:01 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-B*35:01 binding prediction started
+   The nmptmp/ contains 18 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-B*35:01 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-B*35:01 binding
+Temporary directory has been cleared
+The file for HLA-A*24:02 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-A*24:02 binding prediction started
+   The nmptmp/ contains 44 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-A*24:02 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-A*24:02 binding
+Temporary directory has been cleared
+The file for HLA-A*68:02 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-A*68:02 binding prediction started
+   The nmptmp/ contains 40 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-A*68:02 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-A*68:02 binding
+Temporary directory has been cleared
+The file for HLA-B*44:02 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-B*44:02 binding prediction started
+   The nmptmp/ contains 21 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-B*44:02 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-B*44:02 binding
+Temporary directory has been cleared
+The file for HLA-A*02:07 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-A*02:07 binding prediction started
+   The nmptmp/ contains 67 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-A*02:07 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-A*02:07 binding
+Temporary directory has been cleared
+The file for HLA-A*03:01 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-A*03:01 binding prediction started
+   The nmptmp/ contains 33 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-A*03:01 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-A*03:01 binding
+Temporary directory has been cleared
+The file for HLA-A*02:03 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-A*02:03 binding prediction started
+   The nmptmp/ contains 37 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-A*02:03 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-A*02:03 binding
+Temporary directory has been cleared
+The file for HLA-A*01:01 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-A*01:01 binding prediction started
+   The nmptmp/ contains 25 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-A*01:01 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-A*01:01 binding
+Temporary directory has been cleared
+The file for HLA-B*51:01 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-B*51:01 binding prediction started
+   The nmptmp/ contains 28 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-B*51:01 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-B*51:01 binding
+Temporary directory has been cleared
+The file for HLA-B*54:01 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-B*54:01 binding prediction started
+   The nmptmp/ contains 24 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-B*54:01 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-B*54:01 binding
+Temporary directory has been cleared
+The file for HLA-A*02:01 has been splitted
+ Current working directory is /home/vcvetkov/Projects/ipred/output/test/nmptmp
+  HLA-A*02:01 binding prediction started
+   The nmptmp/ contains 52 files to process
+    Current working directory is /home/vcvetkov/Projects/ipred/output/test/results
+ The HLA-A*02:01 peptide binding has been predicted succesfully!
+Succesfully predicted HLA-A*02:01 binding
