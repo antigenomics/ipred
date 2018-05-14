@@ -1,3 +1,4 @@
+#!/bin/bash
 all=false
 while getopts hl:a opt; do
   case $opt in
