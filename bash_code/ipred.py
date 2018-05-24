@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import os, sys, subprocess, argparse, tempfile, shutil
 import pandas as pd
 from tqdm import tqdm
@@ -16,15 +18,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--length', '-l', help = 'The length of generated peptides')
     parser.add_argument('--file', '-f', help = 'Path to the file with fasta sequence to generate k-mers')
+    parser.add_argument('--destination', '-d', dafault = os.getcwd(), help = 'Path where to store output, default is current wd')
     args = parser.parse_args()
 
     l = args.length
     f = args.file
+    d = args.destination
 
     l = int(l)
     f = str(f)
+    d = str(d)
 
-    destination="./"
+    destination=d
     ncores="80"
     nmp_home="/home/vcvetkov/Projects/ipred/bash_code"
 
@@ -35,20 +40,18 @@ if __name__ == "__main__":
         temp.seek(0)
         name = temp.name
     
-    subprocess.run("./ipred_test.sh -f {}".format(name), shell=True)
+    # subprocess.run("./ipred_test.sh -f {}".format(name), shell=True)
 
-    """
     tmpdir = tempfile.mkdtemp()
-    folder = tmpdir + "/"
+    prefix = tmpdir + "/split_"
 
-    print("split -d -e -l 5000 --additional-suffix=.split {name} {dir}".format(name=name, dir=folder))
+    print("split -d -e -l 5000 --additional-suffix=.split {name} {prefix}".format(name=name, prefix=prefix))
 
-    subprocess.run("split -d -e -l 5000 --additional-suffix=.split {name} {dir}".format(name=name, dir=folder), shell=True)
+    subprocess.run("split -d -e -l 5000 --additional-suffix=.split {name} {prefix}".format(name=name, prefix=prefix), shell=True)
 
     print(os.listdir(tmpdir))
 
-    subprocess.run("./NMP_core.sh -a {} -n {} -o {} -d {}".format("HLA-A02:01", ncores, tmpdir, destination), shell=True)
-
+    subprocess.run("./NMP_core.sh -a {} -n {} -o {} -d {} -f {}".format("HLA-A02:01", ncores, tmpdir, destination, "split_"), shell=True)
+    
     os.unlink(name)
     shutil.rmtree(tmpdir)
-    """
