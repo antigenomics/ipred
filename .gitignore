@@ -6,7 +6,6 @@ __pycache__/
 
 # Jupyter
 .ipynb_checkpoints
-predictions for Vadim.ipynb
 
 # History files
 .Rhistory
@@ -18,6 +17,7 @@ predictions for Vadim.ipynb
 # Large files
 output/
 data/
+logs/
 
 .Rproj.user
 R_code.Rproj

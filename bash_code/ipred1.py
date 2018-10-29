@@ -5,7 +5,7 @@
 
 import os, sys, subprocess, argparse, tempfile, shutil
 import pandas as pd
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from Bio import SeqIO
 
 if __name__ == "__main__":
@@ -30,6 +30,7 @@ if __name__ == "__main__":
     # This is path to netMHCpan in your system. Don't forget to change it accordingly!
 
     netmhcpan = '/home/vcvetkov/Tools/netMHCpan-4.0/netMHCpan'
+    ncores = 20
 
     # Reading fasta file with proteome sequence
 
@@ -62,7 +63,7 @@ if __name__ == "__main__":
 
     # Splitting into 5000 line files (netMHCpan constaint)
 
-    for i in range(1, len(pdf)//5000 + 2):
+    for i in trange(1, len(pdf)//5000 + 2):
         if i > len(pdf)//5000:
             df = pdf.iloc[5000*(i-1):,:]
         else:
@@ -71,23 +72,31 @@ if __name__ == "__main__":
      
     # Paralleling netMHCpan with gnu parallel
 
-    process = subprocess.run('parallel --eta --jobs 80 -k \
+    process = subprocess.run('parallel --eta --jobs {} -k \
                              --tmpdir {} {} -p -BA -a {} \
-                             -f ::: {} > {}'.format(parallel_tmpdir,
+                             -f ::: {} > {}'.format(ncores,
+                                                    parallel_tmpdir,
                                                     netmhcpan,
                                                     hla_allele,
                                                     prefix + '*',
                                                     midpoint), shell=True)
 
     # print('Subprocess returned code {}'.format(process.returncode))
-    if not process.returncode: print('.', end='')
+    if not process.returncode:
+        print('.', end='')
+
 
     process = subprocess.run("sed -i '/^ /!d' {}".format(midpoint), shell=True)
     # print('Subprocess returned code {}'.format(process.returncode))
-    if not process.returncode: print('.', end='')
+    if not process.returncode:
+        print('.', end='')
 
-    if os.path.isfile(midpoint): print('.', end='')
-    if not os.stat(midpoint).st_size == 0: print('.', end='')
+    if os.path.isfile(midpoint):
+        print('.', end='')
+
+    if not os.stat(midpoint).st_size == 0:
+        print('.', end='')
+
 
     # netMHCpan's output format is weird and pandas cannot read it properly.
     # Here we remove extra spaces and the last column. The latter could be used
@@ -101,7 +110,7 @@ if __name__ == "__main__":
         lines = [line for line in lines if line != columnlst]
 
     tdf = pd.DataFrame(lines, columns=columnlst)
-    tdf = tdf[['HLA', 'Peptide', 'Aff(nM)']]
+    tdf = tdf[['HLA', 'Peptide', '%Rank']]
     tdf['Origin_protein'] = pdf['Origin_protein'].values
 
     # Check that the order is preserved and each peptide matches with its origin protein
@@ -112,14 +121,15 @@ if __name__ == "__main__":
     for i in range(len(lst1)):
         if lst1[i] != lst2[i]:
             diff.append(i)
-    if not len(diff): print('.')
+    if not len(diff):
+        print('.')
 
     # There are overall five checks in this script. If there are five dots in the output
     # then the final file should have been processed correctly
 
     flag = False
 
-    if os.path.exists(destination):
+    if os.path.isdir(destination):
         smart_name = destination + '/' + os.path.basename(fasta_file).split('.')[0] + '_' + hla_allele + '_nmp'
         if not os.path.isfile(smart_name + '.csv'):
             tdf.to_csv(smart_name + '.csv', index=False)
@@ -143,7 +153,6 @@ if __name__ == "__main__":
         print("Predictions have been made correctly")
     else:
         print("Something went wrong")
-
 
     shutil.rmtree(tmpdir)
     shutil.rmtree(parallel_tmpdir)
