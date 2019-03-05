@@ -30,7 +30,7 @@ if __name__ == "__main__":
     # This is path to netMHCpan in your system. Don't forget to change it accordingly!
 
     netmhcpan = '/home/vcvetkov/Tools/netMHCpan-4.0/netMHCpan'
-    ncores = 20
+    ncores = 16
 
     # Reading fasta file with proteome sequence
 
