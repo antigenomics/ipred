@@ -1,0 +1,134 @@
+---
+title: "Epitope immunogenicity classifier"
+author: "M.S."
+date: "3/9/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(data.table)
+library(dplyr)
+library(stringdist)
+library(reshape2)
+library(parallel)
+library(EMCluster)
+library(ggplot2)
+library(pROC)
+select <- dplyr::select
+CORES <- 4
+```
+
+Load dataset from [Chowell et al. PNAS](https://www.pnas.org/content/112/14/E1754) and [Kidera factors](https://link.springer.com/article/10.1007/BF01025492)
+
+```{r}
+chowell <- fread("chowell.txt")
+kidera <- fread("kidera.txt") %>% melt
+```
+
+Routine for computing Kidera factors of epitope sequences. 
+
+```{r}
+compute_kidera <- function(data) {
+  if (is.data.frame(data)) {
+    if ("antigen.epitope" %in% colnames(data)) {
+      data <- data$antigen.epitope
+    } else {
+      stop("The 'antigen.epitope' column is missing in data frame")
+    }
+  } else {
+    if (!is.character(data)) {
+      stop("Unknown input type, should be either character vector or a data frame with 'antigen.epitope' column")
+    }
+  }
+  res <- data %>%
+    strsplit("") %>%
+    mclapply(function(x) data.table(antigen.epitope = paste0(x, collapse = ""),
+                                    aa = x) %>%
+               merge(kidera, allow.cartesian = T) %>%
+               group_by(antigen.epitope, variable) %>%
+               summarise(value = sum(value)),
+               mc.cores = CORES) %>%
+    rbindlist %>%
+    dcast(antigen.epitope ~ variable, fun.aggregate = sum)
+}
+
+# test
+compute_kidera(c("QQKL", "QLKK"))
+
+chowell.k <- merge(chowell, compute_kidera(chowell))
+```
+
+Some PCA analysis for Chowell dataset using Kidera factors
+
+```{r}
+mat.chowell.k <- chowell.k %>% 
+               select(-antigen.epitope, -hla, -immunogenicity) %>%
+               as.matrix
+pc <- prcomp(mat.chowell.k, 
+            scale = T, rank = 2)
+chowell.k.pc <- chowell.k
+chowell.k.pc$pcX <- pc$x[,1]
+chowell.k.pc$pcY <- pc$x[,2]
+
+ggplot(chowell.k.pc, aes(x = pcX, y = pcY)) +
+  stat_density_2d(data = chowell.k.pc %>% select(pcX, pcY), geom = "raster",
+                 aes(fill = ..density..), contour = F) +
+  geom_density2d(aes(color = immunogenicity)) +
+  scale_color_brewer("Immunogenic", palette = "Set1", labels = c("No", "Yes")) +
+  scale_fill_gradient(low = "white", high="black") +
+  scale_x_continuous(expand=c(0,0), limits = c(-4,4))+
+  scale_y_continuous(expand=c(0,0), limits = c(-4,4))+
+  theme_bw() + 
+  theme(aspect = 1,
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+
+Train classifier (gaussian mixture model) using expectation maximization
+
+```{r}
+res_em <- init.EM(mat.chowell.k, 
+                  nclass = 2,
+                  lab = ifelse(chowell.k$immunogenicity == "Positive", 1, 2))
+summary(res_em)
+res_chowell <- e.step(mat.chowell.k, res_em) %>% 
+  as.data.table %>%
+  cbind(chowell.k)
+
+res_chowell %>%
+  ggplot(aes(x = Gamma.V1, fill = immunogenicity)) +
+  geom_density(alpha = 0.9) +
+  scale_fill_brewer("Immunogenic", palette = "Set1", labels = c("No", "Yes")) +
+  scale_x_continuous("P(Immunogenic)") +
+  scale_y_continuous("Density") +
+  theme_bw() +
+  theme(aspect = 1, 
+        legend.position = "bottom",
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+roc(immunogenicity ~ Gamma.V1, res_chowell, ci = F, plot = F)
+```
+
+A standalone function to classify epitopes and some examples
+
+```{r}
+predict_imm <- function(data) {
+  if (is.data.frame(data)) {
+    data.k <- merge(data, compute_kidera(data))
+  } else {
+    data.k <- compute_kidera(data)
+  }
+  mat.k <- data.k %>% select(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10) %>% as.matrix
+  data.k$imm.prob <- e.step(mat.k, res_em) %>% as.data.table %>% .$Gamma.V1
+  data.k %>% select(-f1, -f2, -f3, -f4, -f5, -f6, -f7, -f8, -f9, -f10)
+}
+
+# Using character vectors
+predict_imm(c("ELALGIGILV", "LAPGATNEK", "GLCTVAML"))
+
+# Using test dataset
+fread("test.txt") %>% 
+  predict_imm() %>%
+  select(antigen.epitope, assay.result, imm.prob)
+```
