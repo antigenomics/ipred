@@ -1,0 +1,456 @@
+---
+title: "Similarity of proteome Kmer profiles"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(Biostrings)
+library(data.table)
+library(reshape2)
+library(forcats)
+library(pROC)
+library(ggrepel)
+library(parallel)
+library(MASS)
+library(scales)
+library(broom)
+library(EMCluster)
+library(ggplot2)
+library(randomForest)
+library(philentropy)
+select <- dplyr::select
+rename <- dplyr::rename
+set.seed(42)
+```
+
+Load proteomes
+
+```{r}
+read_prot <- function(fname) {
+  prots <- readAAStringSet(fname) %>%
+    as.character
+  tibble(name = str_split_fixed(names(prots), "[\\| ]", 4)[,3],
+         seq = prots) %>%
+    mutate(id = str_split_fixed(name, "_", 2)[,1],
+           species = str_split_fixed(name, "_", 2)[,2]) %>%
+    select(-name)
+}
+
+species.meta <- fread("species.metadata.txt")
+
+proteomes <- list.files(path = "proteomes", full.names = T)
+proteomes <- proteomes[str_ends(proteomes, fixed(".fasta.gz"))] %>%
+  as.list %>%
+  lapply(read_prot) %>%
+  rbindlist
+
+proteomes %>%
+  .$species %>%
+  unique
+
+proteomes %>%
+  .$seq %>%
+  nchar %>%
+  sum
+```
+
+Calculate K-mer from sequences
+
+```{r}
+K <- 3
+
+get_kmers <- function(seq, k = K) {
+  data.table(kmer = seq, pos = 1:(nchar(seq) - k + 1)) %>%
+    mutate(kmer = substr(kmer, pos, pos + k - 1))
+}
+
+#get_kmers("ATATATFAAT", 3)
+#list("ATAT", "CCC", "ADAS") %>%
+#  lapply(get_kmers)
+#get_kmers(proteomes$seq[1], 10) %>% head
+
+proteome.kmers <- with(proteomes, paste(species, id, seq)) %>%
+  strsplit(" ") %>%
+  mclapply(function(x) get_kmers(x[3]) %>% mutate(species = x[1], id = x[2]),
+           mc.cores = 40) %>%
+  rbindlist
+```
+
+Calculate K-mer profiles
+
+```{r}
+proteome.kmers.profile <- proteome.kmers %>%
+  group_by(species, kmer) %>%
+  summarize(count = n()) %>%
+  group_by(species) %>%
+  mutate(freq = count / sum(count)) %>%
+  ungroup
+
+proteome.kmers.profile %>%
+  merge(species.meta) %>%
+  ggplot(aes(x = kmer %>% fct_reorder(rank(count)), 
+             group = species,
+             y = count, color = kingdom)) +
+  geom_line(alpha = 0.7) +
+  xlab("Kmer") +
+  facet_wrap(~species.name, scales = "free_y") +
+  theme_classic() +
+  scale_color_brewer(palette = "Set1")+
+  theme(legend.position = "bottom",
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
+Species placement based on K-mer profiles
+
+```{r}
+to_mat <- function(x) {
+  rownames(x) <- x[,1]
+  x[,1] <- NULL
+  as.matrix(x)
+}
+
+proteome.kmers.count.mat <- proteome.kmers.profile %>%
+  dcast(kmer ~ species, value.var = "count", fill = 0) %>%
+  to_mat
+
+proteome.kmers.count.mat <- proteome.kmers.count.mat + 1
+
+proteome.kmers.dist <- JSD(t(proteome.kmers.count.mat), est.prob = "empirical")
+
+proteome.kmers.mds <- isoMDS(as.dist(proteome.kmers.dist))
+
+tibble(species = colnames(proteome.kmers.count.mat),
+       x = proteome.kmers.mds$points[,1],
+       y = proteome.kmers.mds$points[,2]) %>%
+  merge(species.meta) %>%
+  ggplot(aes(x = x, y= y, color = kingdom)) +
+  geom_point(alpha = 0.7) +
+  geom_text_repel(aes(label = species.name)) +
+  xlab("") + ylab("") +
+  scale_color_brewer(palette = "Set1") +
+  theme_classic()
+```
+
+Calculating overall K-mer frequencies for human and pathogens (viruses and bacteria) and contribution of individual K-mers to Kullback-Leibler distance between them
+
+```{r}
+kingdom.kmer.profile <- proteome.kmers.profile %>%
+  merge(species.meta) %>%
+  filter(species == "HUMAN" | kingdom == "virus" | kingdom == "bacteria") %>%
+  mutate(kingdom = ifelse(species == "HUMAN", "human", kingdom)) %>%
+  group_by(kingdom, kmer) %>%
+  summarize(count = sum(count)) %>%
+  dcast(kmer ~ kingdom, value.var = "count", fill = 0) %>%
+  to_mat
+
+kmers <- rownames(kingdom.kmer.profile)
+kingdom.kmer.profile <- kingdom.kmer.profile + 1
+kingdom.kmer.profile <- sweep(kingdom.kmer.profile, 2, colSums(kingdom.kmer.profile), "/")
+kingdom.kmer.profile <- as.data.table(kingdom.kmer.profile)
+colnames(kingdom.kmer.profile) <- paste0("p.", colnames(kingdom.kmer.profile))
+kingdom.kmer.profile$kmer <- kmers
+kingdom.kmer.profile$kl.virus <- with(kingdom.kmer.profile,
+                                      p.virus * log(p.virus / p.human))
+kingdom.kmer.profile$hd.virus <- with(kingdom.kmer.profile,
+                                      -p.virus * log(p.human))
+kingdom.kmer.profile$kl.bacteria <- with(kingdom.kmer.profile,
+                                         p.bacteria * log(p.bacteria / p.human))
+kingdom.kmer.profile$hd.bacteria <- with(kingdom.kmer.profile,
+                                      -p.bacteria * log(p.human))
+
+kingdom.kmer.profile %>%
+  ggplot(aes(x = p.human, y = p.virus)) +
+  geom_point(aes(size = abs(kl.virus), color = kl.virus)) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "grey") +
+  geom_text_repel(data = kingdom.kmer.profile %>%
+                    filter(rank(-abs(kl.virus)) < 10), aes(label = kmer)) +
+  scale_x_continuous("Frequency in human", limits = c(0, 1.6e-3)) + 
+  scale_y_continuous("Frequency in virus", limits = c(0, 1.6e-3)) +
+  theme_classic() +
+  scale_size(guide = F) +
+  scale_color_distiller("KL Dist", palette = "Spectral", limits = c(-2e-3, 2e-3)) +
+  theme(aspect = 1)
+
+kingdom.kmer.profile %>%
+  ggplot(aes(x = p.human, y = p.bacteria)) +
+  geom_point(aes(size = abs(kl.bacteria), color = kl.bacteria)) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "grey") +
+  geom_text_repel(data = kingdom.kmer.profile %>%
+                    filter(rank(-abs(kl.bacteria)) < 10), aes(label = kmer)) +
+  scale_x_continuous("Frequency in human", limits = c(0, 1.6e-3)) + 
+  scale_y_continuous("Frequency in bacteria", limits = c(0, 1.6e-3)) +
+  theme_classic() +
+  scale_size(guide = F) +
+  scale_color_distiller("KL Dist", palette = "Spectral", limits = c(-2e-3, 2e-3)) +
+  theme(aspect = 1)
+
+kingdom.kmer.profile %>%
+  ggplot(aes(x = p.human, y = p.bacteria)) +
+  geom_point(aes(size = abs(hd.bacteria), color = hd.bacteria)) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "grey") +
+  geom_text_repel(data = kingdom.kmer.profile %>%
+                    filter(rank(-abs(hd.bacteria)) < 10), aes(label = kmer)) +
+  scale_x_continuous("Frequency in human", limits = c(0, 1.6e-3)) + 
+  scale_y_continuous("Frequency in bacteria", limits = c(0, 1.6e-3)) +
+  theme_classic() +
+  scale_size(guide = F) +
+  scale_color_distiller("Information Dist", palette = "Spectral")+ #limits = c(-2e-3, 2e-3)) +
+  theme(aspect = 1)
+
+kingdom.kmer.profile %>%
+  ggplot(aes(x = p.human, y = p.virus)) +
+  geom_point(aes(size = abs(hd.virus), color = hd.virus)) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "grey") +
+  geom_text_repel(data = kingdom.kmer.profile %>%
+                    filter(rank(-abs(hd.virus)) < 10), aes(label = kmer)) +
+  scale_x_continuous("Frequency in human", limits = c(0, 1.6e-3)) + 
+  scale_y_continuous("Frequency in virus", limits = c(0, 1.6e-3)) +
+  theme_classic() +
+  scale_size(guide = F) +
+  scale_color_distiller("Information Dist", palette = "Spectral")+ #limits = c(-2e-3, 2e-3)) +
+  theme(aspect = 1)
+```
+
+Classifying entire proteins: computing mean values of KL distance contributions of K-mers, plotting CDFs and 2D distribution in virus/bacteria axes. Note that we do a 1% winsorization here on all data for better plotting.
+
+```{r}
+proteome.kmers.score <- proteome.kmers %>%
+  select(-pos) %>%
+  as.data.table %>%
+  merge(kingdom.kmer.profile %>%
+          as.data.table, by = "kmer") %>%
+  select(-kmer) %>%
+  group_by(species, id) %>%
+  summarise_all(funs(mean))
+
+winsorized <- function(x, lvl = 0.01) {
+  x > quantile(x, lvl) & x < quantile(x, 1.0 - lvl)
+}
+
+proteome.kmers.score %>%
+  merge(species.meta) %>%
+  filter(winsorized(kl.virus)) %>%
+  ggplot(aes(x = kl.virus, group = species, color = kingdom)) +
+  stat_ecdf(alpha = 0.7) +
+  scale_color_brewer(palette = "Set1") +
+  theme_classic()
+
+proteome.kmers.score %>%
+  merge(species.meta) %>%
+  group_by(species) %>%
+  filter(winsorized(kl.bacteria)) %>%
+  ggplot(aes(x = kl.bacteria, group = species, color = kingdom)) +
+  stat_ecdf(alpha = 0.7) +
+  scale_color_brewer(palette = "Set1") +
+  theme_classic()
+
+proteome.kmers.score %>%
+  merge(species.meta) %>%
+  filter(winsorized(kl.virus), winsorized(kl.bacteria)) %>%
+  ggplot(aes(x = kl.virus, y = kl.bacteria)) +
+  #stat_density_2d(data = proteome.kmers.score.w %>% select(-kingdom, -species, -species.name),
+  #                aes(fill = stat(level)), geom = "raster", contour = F) +
+  geom_density2d(aes(color = kingdom), alpha = 0.7, bins = 10) +
+  #facet_wrap(~species.name) +
+  scale_color_brewer(palette = "Set1") +
+  #scale_fill_distiller(palette = "Greys") +
+  theme_classic()
+```
+
+Check performance of features using Chowell dataset. We first introduce several functions to get annotation for peptides
+
+```{r}
+chowell <- fread("chowell.txt")
+
+test.peptides <- chowell$antigen.epitope %>%
+  unique
+
+get_kmer_scores <- function(peptides) {
+  peptides %>%
+    as.list() %>%
+    mclapply(function(x) get_kmers(x) %>% mutate(peptide = x), mc.cores = 40) %>%
+    rbindlist %>%
+    as.data.table %>%
+    merge(kingdom.kmer.profile %>%
+            as.data.table, by = "kmer") 
+}
+
+get_kmer_scores_s <- function(peptides) {
+  peptides %>%
+    unique %>%
+    get_kmer_scores %>%
+    select(-pos, -kmer) %>%
+    group_by(peptide) %>%
+    summarise_all(funs(mean))
+}
+
+get_kmer_scores_s(test.peptides %>% head(20))
+
+kidera <- fread("kidera.txt") %>%
+  melt
+
+get_kidera_scores_s <- function(peptides) {
+  peptides %>%
+    unique %>%
+    strsplit("") %>%
+    mclapply(function(x) data.table(peptide = paste0(x, collapse = ""),
+                                    aa = x) %>%
+               merge(kidera) %>%
+               group_by(peptide, variable) %>%
+               summarize(value = mean(value)), mc.cores = 40) %>%
+    rbindlist %>%
+    dcast(peptide ~ variable, value.var = "value") %>%
+    mutate(len = nchar(peptide))
+}
+
+get_kidera_scores_s(test.peptides %>% head(20))
+```
+
+First lets check correlation between various factors
+
+```{r}
+chowell.scores <- merge(get_kmer_scores_s(test.peptides),
+      get_kidera_scores_s(test.peptides)) %>%
+  melt
+
+score.corr <- merge(chowell.scores,
+      chowell.scores, by = "peptide") %>%
+  group_by(variable.x, variable.y) %>%
+  do(cor.test(.$value.x, .$value.y, method = "spearman") %>% tidy) %>%
+  ungroup() %>%
+  mutate(variable.x = as.factor(variable.x),
+         variable.y = as.factor(variable.y))
+
+score.corr %>%
+  ggplot(aes(x = variable.x , y = variable.y)) +
+  geom_tile(fill = "white", color = "grey") +
+  geom_point(data = score.corr %>%
+               filter(as.integer(variable.x) > as.integer(variable.y)),
+             shape = 21, aes(fill = pmin(pmax(estimate, -0.5), 0.5),
+                             color = ifelse(p.value < 1e-5, "P*<1e-5", "P>=1e-5"),
+                             size = estimate^2)) +
+  geom_text(data = score.corr %>%
+              filter(as.integer(variable.x) < as.integer(variable.y)),
+            aes(label = round(estimate, 2)), fill = "white") +
+  scale_size("R^2") + xlab("") + ylab("") +
+  scale_color_manual("", values = c("black", "white")) +
+  scale_fill_distiller("R", palette = "Spectral", limits = c(-0.5, 0.5)) +
+  theme_classic() +
+  theme(aspect = 1, axis.text.x=element_text(angle=90, vjust=0.5, hjust = 1))
+```
+Compute AUC for factors
+
+```{r}
+chowell.scores.class <- chowell.scores %>%
+  merge(chowell %>% rename(peptide = antigen.epitope))
+
+chowell.auc <- chowell.scores.class %>%
+  group_by(variable) %>%
+  do(tibble(auc = roc(.$immunogenicity, .$value) %>% auc))
+
+chowell.auc %>%
+  ggplot(aes(x = variable %>% fct_reorder(auc), y = auc, fill = auc)) +
+  geom_bar(stat="identity") +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "grey20") +
+  geom_text(aes(label = auc %>% percent, y = auc + 0.02)) +
+  scale_fill_distiller(guide = F, palette = "Spectral") +
+  xlab("") +
+  coord_flip() +
+  theme_classic() +
+  theme()
+```
+
+Do some PCA analysis
+
+```{r}
+chowell.scores.class.m <- chowell.scores.class %>%
+  dcast(peptide + immunogenicity ~ variable, value.var = "value") 
+
+chowell.scores.class.m %>%
+  ggplot(aes(x = kl.virus, y = kf4, color = immunogenicity)) +
+  geom_density2d() +
+  scale_color_brewer(palette = "Set1") +
+  theme_classic() +
+  theme(aspect = 1)
+
+chowell.pca <- chowell.scores.class.m %>%
+  select(-peptide, -immunogenicity) %>%
+  as.matrix %>%
+  prcomp(scale = T)
+
+print(chowell.pca)
+
+cbind(chowell.scores.class.m %>% select(immunogenicity), 
+      chowell.pca$x[,1:3]) %>%
+  ggplot(aes(x = PC1, y = PC2, color = immunogenicity)) +
+  geom_density2d() +
+  scale_color_brewer(palette = "Set1") +
+  theme_classic() +
+  theme(aspect = 1)
+```
+
+Check feature importance
+
+```{r}
+chowell.rf <- randomForest(I(as.factor(immunogenicity)) ~ ., 
+                           data = chowell.scores.class.m %>% select(-peptide), 
+                           importance = T, proximity = T)
+importance(chowell.rf)
+varImpPlot(chowell.rf)
+```
+
+Build EM classifier as in 2018
+
+```{r}
+chowell.scores.class.m1 <- chowell.scores.class.m %>%
+  select(kl.virus, kf4, len) %>%
+  as.matrix %>%
+  scale
+
+res_em <- init.EM(chowell.scores.class.m1, 
+                  nclass = 2,
+                  lab = ifelse(chowell.scores.class.m$immunogenicity == "Positive", 1, 2))
+summary(res_em)
+res_chowell <- e.step(chowell.scores.class.m1, res_em) %>% 
+  as.data.table %>%
+  cbind(chowell.scores.class.m %>% select(peptide, immunogenicity))
+
+roc(immunogenicity ~ Gamma.V1, res_chowell, ci = F)
+
+res_chowell %>%
+  ggplot(aes(x = Gamma.V1, fill = immunogenicity)) +
+  geom_density(alpha = 0.9) +
+  scale_fill_brewer("Immunogenic", palette = "Set1", labels = c("No", "Yes")) +
+  scale_x_continuous("P(Immunogenic)") +
+  scale_y_continuous("Density") +
+  theme_bw() +
+  theme(aspect = 1, 
+        legend.position = "bottom",
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+
+Compute factors for Rui's epitopes just for testing
+
+```
+rui.epi <- fread("rui_epi.txt") %>%
+  .$antigen.epitope
+
+rui.epi.scores <- merge(get_kmer_scores_s(rui.epi),
+      get_kidera_scores_s(rui.epi)) %>%
+  melt
+
+rui.epi.scores$variable <- as.factor(rui.epi.scores$variable)
+rui.epi.scores$variable.id <- paste0("F", as.integer(rui.epi.scores$variable))
+rui.epi.scores %>% select(variable, variable.id) %>% unique %>%
+  fwrite("rui_epi.variables.txt")
+
+rui.epi.scores %>%
+  select(-variable) %>%
+  dcast(peptide ~ variable.id, value.var = "value") %>%
+  fwrite("rui_epi.factors.txt", sep = "\t")
+```
+
+```{r}
+```
