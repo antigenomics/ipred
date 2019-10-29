@@ -11,6 +11,7 @@ library(data.table)
 library(reshape2)
 library(forcats)
 library(pROC)
+library(PRROC)
 library(ggrepel)
 library(parallel)
 library(MASS)
@@ -311,8 +312,13 @@ get_kidera_scores_s(test.peptides %>% head(20))
 First lets check correlation between various factors
 
 ```{r}
-chowell.scores <- merge(get_kmer_scores_s(test.peptides),
-      get_kidera_scores_s(test.peptides)) %>%
+get_all_scores <- function(peptides) {
+  peptides <- peptides %>% unique
+  merge(get_kmer_scores_s(peptides),
+        get_kidera_scores_s(peptides))
+}
+
+chowell.scores <- get_all_scores(chowell$antigen.epitope) %>%
   melt
 
 score.corr <- merge(chowell.scores,
@@ -450,6 +456,188 @@ rui.epi.scores %>%
   select(-variable) %>%
   dcast(peptide ~ variable.id, value.var = "value") %>%
   fwrite("rui_epi.factors.txt", sep = "\t")
+```
+
+Load TCGA data
+
+```{r}
+list(
+  fread("zcat tcga_neoag_pred.txt.gz") %>%
+    mutate(iedb_status = "Unknown") %>%
+    select(mut = mutation,
+           hla = HLA,
+           pos = `position in peptide`,
+           hla_bind = `mut_Bindlevel`,
+           peptide = mut_peptide,
+           iedb_status
+    ),
+  fread("zcat tcga_iedb_valid.txt.gz") %>%
+    select(mut = `Mutation in amino acid`,
+           hla = `HLA allele`,
+           pos = `Position in peptide`,
+           hla_bind = `Predicted binding level`,
+           peptide = Peptide,
+           iedb_status = `IEDB result`
+    )) %>% rbindlist %>% unique -> tcga_epitopes
+
+tcga_epitopes %>% .$iedb_status %>% as.factor %>% summary
+
+tcga_epitopes.scores <- get_all_scores(tcga_epitopes$peptide) %>%
+  merge(tcga_epitopes %>%
+          select(peptide, iedb_status, hla, mut, pos) %>% unique) %>%
+  mutate(is.validated = !(iedb_status %in% c("Unknown", "Negative")))
+```
+
+```{r}
+tcga_epitopes.scores %>%
+  mutate(peptide.len = nchar(peptide)) %>%
+  ggplot(aes(x = pos, fill = is.validated)) +
+  geom_histogram(aes(y=..density..), position = "identity", 
+                 binwidth = 1, alpha = 0.5) +
+  facet_wrap(~ peptide.len, scales = "free_x") +
+  scale_x_continuous(breaks = 1:20) +
+  scale_fill_brewer(palette = "Set1") +
+  theme_classic()
+```
+
+Check features 
+
+```{r}
+tcga_epitopes.scores.1 <- tcga_epitopes.scores %>%
+  filter(pos != 2 & pos != nchar(peptide)) %>%
+  select(-hla, -mut, -pos) %>%
+  unique
+
+tcga_epitopes.scores.1 %>%
+  filter(winsorized(p.virus)) %>%
+  ggplot(aes(x = kl.virus, color = is.validated)) +
+  stat_ecdf() +
+  scale_color_brewer(palette = "Set1") +
+  theme_classic()
+
+tcga_epitopes.scores.1 %>%
+  filter(winsorized(p.virus)) %>%
+  ggplot(aes(x = p.virus, color = is.validated)) +
+  stat_ecdf() +
+  scale_color_brewer(palette = "Set1") +
+  theme_classic()
+
+ks.test(tcga_epitopes.scores.1[which(tcga_epitopes.scores.1$is.validated), ]$p.virus,
+        tcga_epitopes.scores.1[which(!tcga_epitopes.scores.1$is.validated), ]$p.virus)
+
+tcga_epitopes.scores.1 %>%
+  filter(winsorized(kf4)) %>%
+  ggplot(aes(x = kf4, color = is.validated)) +
+  stat_ecdf() +
+  scale_color_brewer(palette = "Set1") +
+  theme_classic()
+
+ks.test(tcga_epitopes.scores.1[which(tcga_epitopes.scores.1$is.validated), ]$kf4,
+        tcga_epitopes.scores.1[which(!tcga_epitopes.scores.1$is.validated), ]$kf4)
+
+tcga_epitopes.scores.1 %>%
+  ggplot(aes(x = kf4, y = p.virus, color = is.validated)) +
+  geom_density2d() +
+  scale_color_brewer(palette = "Set1") +
+  theme_classic()
+
+with(tcga_epitopes.scores.1, cor.test(kf4, p.virus))
+```
+
+Check separation for each HLA and feature
+
+```{r}
+comp_ks_D <- function(x, validated) {
+  ks.test(x[validated], x[!validated])$statistic
+}
+
+epi.count <- tcga_epitopes.scores %>%
+  filter(pos != 2 & pos != nchar(peptide)) %>%
+  mutate(hla = substr(hla, 1, 4)) %>%
+  group_by(hla, is.validated) %>%
+  summarize(count = n()) %>%
+  filter(is.validated) %>%
+  arrange(-count)
+
+epi.count
+
+good_hla <- epi.count %>% filter(count >= 30) %>% .$hla
+
+tcga_epitopes.scores %>%
+  filter(pos != 2 & pos != nchar(peptide)) %>%
+  mutate(hla = substr(hla, 1, 4)) %>%
+  filter(hla %in% good_hla) %>%
+  select(-iedb_status, -mut, -pos, -peptide) %>%
+  melt %>%
+  group_by(hla, variable) %>%
+  do(tibble(D = comp_ks_D(.$value, .$is.validated))) -> tcga_epitope_D_hla
+
+tcga_epitope_D_hla %>%
+  ggplot(aes(x = hla %>% fct_reorder(-D),
+             y = variable %>% fct_reorder(-D), fill = D, size = D^2)) +
+  geom_point(shape = 21, color = "grey") +
+  scale_size(guide = F) +
+  scale_fill_distiller("KS D", palette = "Blues", direction = 1) +
+  xlab("") + ylab("") +
+  theme_bw()
+
+tcga_epitope_D_hla %>%
+  dcast(variable ~ hla) -> tmp
+rownames(tmp) <- tmp$variable
+tmp$variable <- NULL
+tmp %>% as.matrix %>% dist %>% hclust %>% plot
+tmp %>% as.matrix %>% t %>% dist %>% hclust %>% plot
+```
+
+```{r}
+tcga_epitopes.scores.1 <- tcga_epitopes.scores %>%
+  select(-peptide) %>%
+  group_by(validated) %>%
+  sample_n(1648, replace = F) %>%
+  ungroup
+
+tcga_epitopes.rf <- randomForest(as.factor(validated) ~ ., 
+                           data = tcga_epitopes.scores.1 %>% 
+                             select(validated, kf4, p.virus), 
+                           importance = T, proximity = T)
+importance(tcga_epitopes.rf)
+varImpPlot(tcga_epitopes.rf)
+data.table(validated = tcga_epitopes.scores.1$validated,
+           pred = predict(tcga_epitopes.rf)) %>%
+  group_by(validated, pred) %>%
+  summarize(count = n()) %>%
+  dcast(validated ~ pred)
+roc(validated ~ Gamma.V1, res_tcga_epitopes, ci = F)
+```
+
+```{r}
+tcga_epitopes.scores.m1 <- tcga_epitopes.scores.1 %>%
+  select(kf4, p.virus) %>%
+  as.matrix %>%
+  scale
+
+res_em <- init.EM(tcga_epitopes.scores.m1, 
+                  nclass = 2,
+                  lab = tcga_epitopes.scores.1$validated)
+summary(res_em)
+res_tcga_epitopes <- e.step(tcga_epitopes.scores.m1, res_em) %>% 
+  as.data.table %>%
+  cbind(data.table(validated = tcga_epitopes.scores.1 %>% .$validated))
+
+roc(validated ~ Gamma.V1, res_tcga_epitopes, ci = F)
+```
+
+```
+res_chowell %>%
+  ggplot(aes(x = Gamma.V1, fill = immunogenicity)) +
+  geom_density(alpha = 0.9) +
+  scale_fill_brewer("Immunogenic", palette = "Set1", labels = c("No", "Yes")) +
+  scale_x_continuous("P(Immunogenic)") +
+  scale_y_continuous("Density") +
+  theme_bw() +
+  theme(aspect = 1, 
+        legend.position = "bottom",
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
 ```{r}
