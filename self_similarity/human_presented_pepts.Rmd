@@ -1,0 +1,89 @@
+---
+title: "human peptides binder enrichment"
+author: "Vasily O. Tsvetkov"
+date: "19/11/2019"
+output: html_document
+---
+
+```
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install(c("pathview", "gage", "gageData", "GenomicAlignments",
+    "TxDb.Hsapiens.UCSC.hg19.knownGene"))
+```
+
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("GOexpress")
+
+```
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(Biostrings)
+library(data.table)
+library(gage)
+library("ggplot2") #Best plots
+library("ggrepel") #Avoid overlapping labels
+```
+
+
+Loading netMHCpan prediction data
+
+```{r}
+human.peps <- fread("~/Data/epitope_nmp/UP000005640_nmp.csv")
+colnames(human.peps) <- c("HLA","Peptide","Rank","Origin.protein","Origin.name" )
+# human.peps = human.peps[1:10000]
+human.peps <- human.peps %>% 
+                mutate(strong.binders = ifelse(Rank < 0.5, 1, 0),
+                       weak.binders = ifelse((Rank > 0.5 & Rank < 2), 1, 0),
+                       nonbinders = ifelse(Rank > 2, 1, 0))
+```
+
+
+```{r}
+p.strong.binder <- sum(human.peps$strong.binders) / length(human.peps$strong.binders)
+
+# null hypothesis
+# the number of strong binders in a certain peptide is less or equal to 
+# the number of strong binders in human proteome
+test.null.hypothesis <- function(.n.success, .n.total){
+  res = binom.test(.n.success, .n.total, p = p.strong.binder, alternative = "two.sided")
+  res$p.value
+}
+  
+human.pep.stats = human.peps %>%
+  group_by(Origin.protein) %>% 
+  summarise(pep.present.rate = (sum(strong.binders) + sum(weak.binders)) / n(),
+            n.binders = sum(strong.binders),
+            n.expected = n() * p.strong.binder,
+            n.total = n(),
+            prot.p.value = test.null.hypothesis(sum(strong.binders), n()),
+            log.change.rate = log2(sum(strong.binders) / n() / p.strong.binder)) %>%
+  mutate(sig = ifelse(prot.p.value<0.05, "1", "0")) %>% 
+  arrange(prot.p.value) 
+
+volc = ggplot(human.pep.stats, aes(log.change.rate, -log10(prot.p.value))) + #volcanoplot with log2Foldchange versus pvalue
+    geom_point(aes(col=sig)) + #add points colored by significance
+    scale_color_manual(values=c("black", "red")) + 
+    ggtitle("Presented peptides") #e.g. 'Volcanoplot DESeq2'
+volc+geom_text_repel(data=head(human.pep.stats, 20), aes(label=Origin.protein)) #adding text for the top 20 genes
+```
+
+
+```{r}
+human.pep.stats %>% 
+  filter(log.change.rate == -Inf) 
+```
+
+
+
+
+
+
+
+
+
+
